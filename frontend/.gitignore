@@ -22,5 +22,5 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-public/developer-photo.jpg
-public/pathora-logo.png
+frontend/public/developer-photo.jpg
+frontend/public/pathora-logo.png
