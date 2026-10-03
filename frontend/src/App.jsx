@@ -804,7 +804,7 @@ const [analysis, setAnalysis] = useState(
       );
 
       const response = await fetch(
-        "http://localhost:5000/api/analyze",
+       "https://pathora-backend-ud61.onrender.com/api/analyze",
         {
           method: "POST",
           body: data,
