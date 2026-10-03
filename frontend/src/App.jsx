@@ -1,11 +1,42 @@
 import { useState } from "react";
 import "./App.css";
+import Login from "./components/Login";
+import Signup from "./components/Signup";
+import ForgotPassword from "./components/ForgotPassword";
+import Dashboard from "./components/Dashboard";
+
+import {
+  saveUser,
+  getUser,
+  saveSession,
+  getSession,
+  saveProfile,
+  saveAnalysis,
+  getAnalysis,
+} from "./utils/storage";
 
 function App() {
   const [showBuilder, setShowBuilder] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
+  const [showSignup, setShowSignup] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(getSession());
+  const [showDashboard, setShowDashboard] = useState(getSession());
+
+  // Stores the account created through Signup
+  const [registeredUser, setRegisteredUser] = useState(getUser());
+
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analysis, setAnalysis] = useState(null);
+  // Roadmap is only loaded into the UI after login.
+// This prevents saved roadmaps from appearing on the public homepage.
+const [analysis, setAnalysis] = useState(
+  getSession() ? getAnalysis() : null
+);
   const [errorMessage, setErrorMessage] = useState("");
+
+  // ============================================================
+  // INITIAL FORM DATA
+  // ============================================================
 
   const initialFormData = {
     educationLevel: "",
@@ -203,6 +234,7 @@ function App() {
   // ============================================================
 
   const openBuilder = () => {
+    setShowDashboard(false);
     setShowBuilder(true);
     setErrorMessage("");
 
@@ -213,6 +245,187 @@ function App() {
           behavior: "smooth",
         });
     }, 100);
+  };
+
+  // ============================================================
+  // OPEN LOGIN
+  // ============================================================
+
+  const openLogin = () => {
+    setShowLogin(true);
+    setShowSignup(false);
+    setShowForgotPassword(false);
+  };
+
+  // ============================================================
+  // OPEN SIGNUP
+  // ============================================================
+
+  const openSignup = () => {
+    setShowSignup(true);
+    setShowLogin(false);
+    setShowForgotPassword(false);
+  };
+
+  // ============================================================
+  // OPEN FORGOT PASSWORD
+  // ============================================================
+
+  const openForgotPassword = () => {
+    setShowForgotPassword(true);
+    setShowLogin(false);
+    setShowSignup(false);
+  };
+
+  // ============================================================
+  // ACCOUNT CREATED
+  // ============================================================
+
+  const handleAccountCreated = (userData) => {
+    setRegisteredUser(userData);
+
+    // Save the account so it survives a browser refresh.
+    saveUser(userData);
+
+    // A newly created account still needs to log in.
+    saveSession(false);
+    setIsLoggedIn(false);
+    setShowDashboard(false);
+
+    // After creating account, open Login page
+    setShowSignup(false);
+    setShowForgotPassword(false);
+    setShowLogin(true);
+  };
+
+  // ============================================================
+  // SUCCESSFUL LOGIN
+  // ============================================================
+
+  const handleLoginSuccess = () => {
+  // Restore the user's saved roadmap after successful login.
+  const savedAnalysis = getAnalysis();
+
+  setAnalysis(savedAnalysis);
+
+  setIsLoggedIn(true);
+  setShowLogin(false);
+  setShowSignup(false);
+  setShowForgotPassword(false);
+  setShowDashboard(true);
+
+  // Keep the login session after a browser refresh.
+  saveSession(true);
+
+  setTimeout(() => {
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  }, 100);
+};
+
+  // ============================================================
+  // PASSWORD RESET
+  // ============================================================
+
+  const handlePasswordReset = (newPassword) => {
+    if (!registeredUser) {
+      return;
+    }
+
+    const updatedUser = {
+      ...registeredUser,
+      password: newPassword,
+    };
+
+    setRegisteredUser(updatedUser);
+    saveUser(updatedUser);
+
+    setShowForgotPassword(false);
+    setShowLogin(true);
+  };
+
+  // ============================================================
+  // BACK FROM FORGOT PASSWORD
+  // ============================================================
+
+  const closeForgotPassword = () => {
+    setShowForgotPassword(false);
+    setShowLogin(true);
+  };
+
+  // ============================================================
+  // OPEN DASHBOARD
+  // ============================================================
+
+    const openDashboard = () => {
+  if (!isLoggedIn) {
+    openLogin();
+    return;
+  }
+
+  // Reload the saved roadmap from storage.
+  setAnalysis(getAnalysis());
+
+  setShowDashboard(true);
+  setShowLogin(false);
+  setShowSignup(false);
+  setShowForgotPassword(false);
+  setShowBuilder(false);
+
+  setTimeout(() => {
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  }, 100);
+};
+
+
+  // ============================================================
+  // LOGOUT
+  // ============================================================
+
+  const handleLogout = () => {
+    const confirmLogout = window.confirm(
+      "Are you sure you want to logout?"
+    );
+
+    if (!confirmLogout) {
+      return;
+    }
+
+    setIsLoggedIn(false);
+    setShowDashboard(false);
+    setShowBuilder(false);
+
+    // Logout ends the session but keeps the account saved.
+    saveSession(false);
+    setAnalysis(null);
+    setErrorMessage("");
+    setFormData(initialFormData);
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  };
+
+  // ============================================================
+  // BACK FROM LOGIN
+  // ============================================================
+
+  const closeLogin = () => {
+    setShowLogin(false);
+  };
+
+  // ============================================================
+  // BACK FROM SIGNUP
+  // ============================================================
+
+  const closeSignup = () => {
+    setShowSignup(false);
   };
 
   // ============================================================
@@ -297,7 +510,6 @@ function App() {
     details.push(`Education Level: ${level}`);
 
     // SCHOOL STUDENTS
-
     if (
       level === "Class 10" ||
       level === "Class 11" ||
@@ -323,7 +535,6 @@ function App() {
     }
 
     // DIPLOMA
-
     if (level === "Diploma") {
       if (formData.degree.trim()) {
         details.push(
@@ -345,7 +556,6 @@ function App() {
     }
 
     // UNDERGRADUATE
-
     if (
       level ===
       "Undergraduate / College Student"
@@ -370,7 +580,6 @@ function App() {
     }
 
     // POSTGRADUATE
-
     if (level === "Postgraduate") {
       if (formData.degree.trim()) {
         details.push(
@@ -392,7 +601,6 @@ function App() {
     }
 
     // GRADUATE / JOB SEEKER
-
     if (
       level ===
       "Graduate / Job Seeker"
@@ -413,7 +621,6 @@ function App() {
     }
 
     // WORKING PROFESSIONAL
-
     if (
       level ===
       "Working Professional"
@@ -440,7 +647,6 @@ function App() {
     }
 
     // OTHER
-
     if (level === "Other") {
       if (formData.otherEducation.trim()) {
         details.push(
@@ -488,9 +694,7 @@ function App() {
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     ];
 
-    if (
-      !allowedTypes.includes(file.type)
-    ) {
+    if (!allowedTypes.includes(file.type)) {
       setErrorMessage(
         "Unsupported resume format. Please upload a PDF or DOCX file."
       );
@@ -675,6 +879,17 @@ function App() {
         receivedAnalysis
       );
 
+      // Save the latest profile and AI roadmap so the
+      // user's Dashboard can show it later. File objects
+      // cannot be stored directly in localStorage.
+      saveProfile({
+        ...formData,
+        education: educationSummary.trim(),
+        resume: null,
+      });
+
+      saveAnalysis(receivedAnalysis);
+
       setTimeout(() => {
         document
           .getElementById(
@@ -813,6 +1028,7 @@ function App() {
                     key={`strength-${index}`}
                   >
                     <span>✓</span>
+
                     <p>
                       {strength}
                     </p>
@@ -830,6 +1046,7 @@ function App() {
 
             <div className="analysis-section-title">
               <span>📈</span>
+
               <h3>
                 Skills You Need to Develop
               </h3>
@@ -844,6 +1061,7 @@ function App() {
                     key={`gap-${index}`}
                   >
                     <span>→</span>
+
                     <p>
                       {gap}
                     </p>
@@ -861,6 +1079,7 @@ function App() {
 
             <div className="analysis-section-title">
               <span>🧭</span>
+
               <h3>
                 Your Career Roadmap
               </h3>
@@ -1000,6 +1219,7 @@ function App() {
 
             <div className="analysis-section-title">
               <span>🏆</span>
+
               <h3>
                 Certifications & Exams
               </h3>
@@ -1013,10 +1233,15 @@ function App() {
                     className="mini-card"
                     key={`cert-${index}`}
                   >
-                    <span>🏆</span>
+
+                    <span>
+                      🏆
+                    </span>
+
                     <p>
                       {item}
                     </p>
+
                   </div>
                 )
               )}
@@ -1030,10 +1255,15 @@ function App() {
           <div className="analysis-section">
 
             <div className="analysis-section-title">
-              <span>🛠️</span>
+
+              <span>
+                🛠️
+              </span>
+
               <h3>
                 Recommended Projects
               </h3>
+
             </div>
 
             <div className="card-grid">
@@ -1044,10 +1274,15 @@ function App() {
                     className="mini-card project-card"
                     key={`project-${index}`}
                   >
-                    <span>🚀</span>
+
+                    <span>
+                      🚀
+                    </span>
+
                     <p>
                       {project}
                     </p>
+
                   </div>
                 )
               )}
@@ -1066,10 +1301,15 @@ function App() {
               <div className="goal-column">
 
                 <div className="analysis-section-title">
-                  <span>⚡</span>
+
+                  <span>
+                    ⚡
+                  </span>
+
                   <h3>
                     Short-Term Goals
                   </h3>
+
                 </div>
 
                 <ul>
@@ -1093,10 +1333,15 @@ function App() {
               <div className="goal-column">
 
                 <div className="analysis-section-title">
-                  <span>🌟</span>
+
+                  <span>
+                    🌟
+                  </span>
+
                   <h3>
                     Long-Term Goals
                   </h3>
+
                 </div>
 
                 <ul>
@@ -1123,10 +1368,15 @@ function App() {
           <div className="final-advice">
 
             <div className="analysis-section-title">
-              <span>💡</span>
+
+              <span>
+                💡
+              </span>
+
               <h3>
                 Pathora's Advice
               </h3>
+
             </div>
 
             <p>
@@ -1141,11 +1391,75 @@ function App() {
   };
 
   // ============================================================
+  // DASHBOARD PAGE
+  // ============================================================
+
+  if (showDashboard && isLoggedIn) {
+    return (
+      <Dashboard
+        registeredUser={registeredUser}
+        analysis={analysis}
+        onBack={() => setShowDashboard(false)}
+        onBuildRoadmap={openBuilder}
+        onLogout={handleLogout}
+      />
+    );
+  }
+
+  // ============================================================
+  // FORGOT PASSWORD PAGE
+  // ============================================================
+
+  if (showForgotPassword) {
+    return (
+      <ForgotPassword
+        onBack={closeForgotPassword}
+        registeredUser={registeredUser}
+        onPasswordReset={handlePasswordReset}
+      />
+    );
+  }
+
+  // ============================================================
+  // LOGIN PAGE
+  // ============================================================
+
+  if (showLogin) {
+    return (
+      <Login
+        onBack={closeLogin}
+        onSignup={openSignup}
+        onLogin={handleLoginSuccess}
+        registeredUser={registeredUser}
+        onForgotPassword={openForgotPassword}
+      />
+    );
+  }
+
+  // ============================================================
+  // SIGNUP PAGE
+  // ============================================================
+
+  if (showSignup) {
+    return (
+      <Signup
+        onBack={closeSignup}
+        onLogin={openLogin}
+        onAccountCreated={handleAccountCreated}
+      />
+    );
+  }
+
+  // ============================================================
   // MAIN UI
   // ============================================================
 
   return (
     <div>
+
+      {/* ========================================================
+          NAVBAR
+      ======================================================== */}
 
       <nav className="navbar">
 
@@ -1177,18 +1491,64 @@ function App() {
             About
           </a>
 
+          <a href="#developer">
+            Developer
+          </a>
+
         </div>
 
-        <button
-          className="nav-button"
-          onClick={openBuilder}
-        >
-          Get Started
-        </button>
+        {/* ======================================================
+            PROFILE / LOGIN / LOGOUT + GET STARTED
+        ====================================================== */}
+
+        <div className="nav-actions">
+
+          {!isLoggedIn ? (
+            <button
+              className="login-nav-button"
+              onClick={openLogin}
+            >
+              Login
+            </button>
+          ) : (
+            <>
+              <button
+                className="profile-nav-button"
+                onClick={openDashboard}
+              >
+                <span className="profile-nav-icon">👤</span>
+                Profile
+              </button>
+
+              <button
+                className="login-nav-button"
+                onClick={handleLogout}
+              >
+                Logout
+              </button>
+            </>
+          )}
+
+          <button
+            className="nav-button"
+            onClick={openBuilder}
+          >
+            Get Started
+          </button>
+
+        </div>
 
       </nav>
 
+      {/* ========================================================
+          MAIN
+      ======================================================== */}
+
       <main>
+
+        {/* ======================================================
+            HERO
+        ====================================================== */}
 
         <section className="hero">
 
@@ -1197,18 +1557,24 @@ function App() {
           </p>
 
           <h1>
+
             Your career path,
+
             <br />
+
             <span>
               powered by AI.
             </span>
+
           </h1>
 
           <p className="hero-description">
+
             Pathora doesn't just analyze resumes—it
             creates a personalized career roadmap
             designed around your skills, interests,
             education, and goals.
+
           </p>
 
           <div className="hero-buttons">
@@ -1236,6 +1602,10 @@ function App() {
           </div>
 
         </section>
+
+        {/* ======================================================
+            FEATURES
+        ====================================================== */}
 
         <section
           className="features"
@@ -1322,6 +1692,10 @@ function App() {
           </div>
 
         </section>
+
+        {/* ======================================================
+            HOW IT WORKS
+        ====================================================== */}
 
         <section
           className="how-it-works"
@@ -1419,6 +1793,10 @@ function App() {
 
         </section>
 
+        {/* ======================================================
+            ABOUT
+        ====================================================== */}
+
         <section
           className="about"
           id="about"
@@ -1506,6 +1884,270 @@ function App() {
 
         </section>
 
+        {/* ======================================================
+            ABOUT THE DEVELOPER
+        ====================================================== */}
+
+        <section
+          className="developer-section"
+          id="developer"
+        >
+
+          <div className="developer-container">
+
+            <div className="section-heading">
+              <p className="section-label">
+                ABOUT THE DEVELOPER
+              </p>
+
+              <h2>
+                Meet the developer behind Pathora.
+              </h2>
+
+              <p>
+                Pathora is built with the goal of making
+                career guidance more personal, practical,
+                and accessible for students.
+              </p>
+            </div>
+
+            <div className="developer-card">
+
+              <div className="developer-photo-wrapper">
+                <img
+                  src="/developer-photo.jpg"
+                  alt="Pathora developer"
+                  className="developer-photo"
+                  loading="lazy"
+                />
+              </div>
+
+              <div className="developer-info">
+
+                <p className="developer-label">
+                  DEVELOPER & CREATOR
+                </p>
+
+                <h3>
+                  Tanmay Mishra
+                </h3>
+
+                <p className="developer-role">
+                  B.Tech CSE-AIML Student at Axis Colleges | Developer & AI Enthusiast
+                </p>
+
+                <p>
+                  Hi! I'm Tanmay, the developer behind Pathora.
+                  I created Pathora as a project focused on helping
+                  students understand their strengths, explore
+                  suitable career directions, and turn uncertainty
+                  into a practical roadmap.
+                </p>
+
+                <p>
+                  If you have a question, suggestion, feedback,
+                  or simply want to get in touch, feel free to
+                  reach out by email.
+                </p>
+
+                <a
+                  className="developer-email"
+                  href="mailto:mishratanmay164@gmail.com"
+                >
+                  ✉ mishratanmay164@gmail.com
+                </a>
+
+              </div>
+
+            </div>
+
+          </div>
+
+        </section>
+
+            {/* =====================================================
+            AXIS COLLEGES — EXPLORE
+        ===================================================== */}
+
+        <section
+          className="about college-section"
+          id="college"
+        >
+
+          <div className="about-content">
+
+            <div className="about-text">
+
+              <p className="section-label">
+                EXPLORE →
+              </p>
+
+              <h2>
+                Want to know a little more about the college where
+                <span> Pathora was created?</span>
+              </h2>
+
+              <p>
+                Pathora was developed as a college project at
+                <strong> Axis Colleges</strong>, Kanpur.
+              </p>
+
+              <p>
+                If you're exploring colleges and looking for a place where
+                students can work on technology, innovation, and practical
+                projects, you can explore Axis Colleges and learn more about
+                its academic environment and opportunities.
+              </p>
+
+              <a
+                href="https://axiscolleges.org/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="primary-button"
+              >
+                Explore Axis Colleges →
+              </a>
+
+            </div>
+
+
+            <div className="about-card">
+
+              <div className="about-icon">
+                🎓
+              </div>
+
+              <h3>
+                Axis Colleges
+              </h3>
+
+              <p>
+                A place where Pathora took shape as a student project,
+                combining technology, learning, and practical development.
+              </p>
+
+              <div className="vision-points">
+
+                <div>
+                  ✓ Technology-focused learning
+                </div>
+
+                <div>
+                  ✓ Practical project development
+                </div>
+
+                <div>
+                  ✓ Student innovation
+                </div>
+
+                <div>
+                  ✓ Career-oriented education
+                </div>
+
+              </div>
+
+            </div>
+
+          </div>
+
+        </section>
+
+
+     
+
+<div className="axis-achievements-layout">
+
+  <div className="axis-achievements-header">
+    <div className="axis-panel-kicker">Academic Achievements</div>
+
+    <h3>
+      Building <span>Knowledge, Skills & Excellence</span>
+    </h3>
+
+    <p>
+      Axis Colleges focuses on academic development, competitive
+      preparation, technical skills and industry-oriented learning.
+    </p>
+  </div>
+
+  <div className="axis-achievement-grid">
+
+    <div className="axis-achievement-card">
+      <h4>🏆 GATE Success</h4>
+      <p>
+        Engineering students have demonstrated strong performance in
+        competitive examinations. In GATE 2026, 15 CSE/IT students
+        qualified, including students securing national ranks such as
+        AIR 593 and AIR 665.
+      </p>
+    </div>
+
+    <div className="axis-achievement-card">
+      <h4>🎓 AKTU-Aligned Education</h4>
+      <p>
+        The engineering curriculum follows the academic framework of
+        Dr. A.P.J. Abdul Kalam Technical University (AKTU), supported
+        by AICTE-approved programs.
+      </p>
+    </div>
+
+    <div className="axis-achievement-card">
+      <h4>💻 Technical Learning</h4>
+      <p>
+        Students receive opportunities to strengthen technical
+        knowledge through coding activities, practical laboratories,
+        projects, technical training and skill-development programs.
+      </p>
+    </div>
+
+    <div className="axis-achievement-card">
+      <h4>🚀 Innovation & Hackathons</h4>
+      <p>
+        The institution encourages students to participate in
+        technology-focused activities and events, including screening
+        and participation opportunities connected with initiatives
+        such as Smart India Hackathon.
+      </p>
+    </div>
+
+    <div className="axis-achievement-card">
+      <h4>🏅 Institutional Recognition</h4>
+      <p>
+        Axis Colleges has received academic and institutional
+        recognition, including recognition associated with the
+        QS I-Gauge and ASSOCHAM academic excellence initiatives.
+      </p>
+    </div>
+
+    <div className="axis-achievement-card">
+      <h4>📚 Diverse Programs</h4>
+      <p>
+        The engineering wing offers B.Tech programs across CSE,
+        AI & ML, Data Science, IT, ECE, Electrical, Mechanical and
+        Civil Engineering, along with postgraduate and diploma-level
+        technical education.
+      </p>
+    </div>
+
+  </div>
+
+  <div className="axis-package-highlight">
+    <strong>63-Acre Campus</strong>
+    <span>
+      A technology-focused learning environment at Axis Knowledge City,
+      Rooma, Kanpur.
+    </span>
+  </div>
+
+</div>
+
+
+
+
+        {/* ======================================================
+            ROADMAP BUILDER
+        ====================================================== */}
+
         {showBuilder && (
           <section
             className="roadmap-builder"
@@ -1534,6 +2176,8 @@ function App() {
 
               </div>
 
+              {/* ERROR */}
+
               {errorMessage && (
                 <div
                   className="analysis-error"
@@ -1551,10 +2195,16 @@ function App() {
                 </div>
               )}
 
+              {/* ==================================================
+                  BUILDER FORM
+              ================================================== */}
+
               <form
                 className="builder-form"
                 onSubmit={handleAnalyze}
               >
+
+                {/* RESUME */}
 
                 <div className="form-group">
 
@@ -1598,6 +2248,8 @@ function App() {
                   </small>
 
                 </div>
+
+                {/* EDUCATION LEVEL */}
 
                 <div className="form-group">
 
@@ -1655,6 +2307,8 @@ function App() {
                   </select>
 
                 </div>
+
+                {/* SCHOOL */}
 
                 {(formData.educationLevel === "Class 10" ||
                   formData.educationLevel === "Class 11" ||
@@ -1715,9 +2369,13 @@ function App() {
                   </>
                 )}
 
+                {/* DIPLOMA */}
+
                 {formData.educationLevel === "Diploma" && (
                   <>
+
                     <div className="form-group">
+
                       <label htmlFor="degree">
                         🎓 Diploma Program
                       </label>
@@ -1730,9 +2388,11 @@ function App() {
                         value={formData.degree}
                         onChange={handleInputChange}
                       />
+
                     </div>
 
                     <div className="form-group">
+
                       <label htmlFor="branch">
                         💻 Branch / Specialization
                       </label>
@@ -1745,9 +2405,11 @@ function App() {
                         value={formData.branch}
                         onChange={handleInputChange}
                       />
+
                     </div>
 
                     <div className="form-group">
+
                       <label htmlFor="year">
                         📅 Current Year
                       </label>
@@ -1760,14 +2422,20 @@ function App() {
                         value={formData.year}
                         onChange={handleInputChange}
                       />
+
                     </div>
+
                   </>
                 )}
+
+                {/* UNDERGRADUATE */}
 
                 {formData.educationLevel ===
                   "Undergraduate / College Student" && (
                   <>
+
                     <div className="form-group">
+
                       <label htmlFor="degree">
                         🎓 Degree
                       </label>
@@ -1780,9 +2448,11 @@ function App() {
                         value={formData.degree}
                         onChange={handleInputChange}
                       />
+
                     </div>
 
                     <div className="form-group">
+
                       <label htmlFor="branch">
                         💻 Branch / Specialization
                       </label>
@@ -1795,9 +2465,11 @@ function App() {
                         value={formData.branch}
                         onChange={handleInputChange}
                       />
+
                     </div>
 
                     <div className="form-group">
+
                       <label htmlFor="year">
                         📅 Current Year
                       </label>
@@ -1808,6 +2480,7 @@ function App() {
                         value={formData.year}
                         onChange={handleInputChange}
                       >
+
                         <option value="">
                           Select your year
                         </option>
@@ -1831,15 +2504,22 @@ function App() {
                         <option value="Final Year">
                           Final Year
                         </option>
+
                       </select>
+
                     </div>
+
                   </>
                 )}
+
+                {/* POSTGRADUATE */}
 
                 {formData.educationLevel ===
                   "Postgraduate" && (
                   <>
+
                     <div className="form-group">
+
                       <label htmlFor="degree">
                         🎓 Degree
                       </label>
@@ -1852,9 +2532,11 @@ function App() {
                         value={formData.degree}
                         onChange={handleInputChange}
                       />
+
                     </div>
 
                     <div className="form-group">
+
                       <label htmlFor="specialization">
                         🔬 Specialization
                       </label>
@@ -1867,9 +2549,11 @@ function App() {
                         value={formData.specialization}
                         onChange={handleInputChange}
                       />
+
                     </div>
 
                     <div className="form-group">
+
                       <label htmlFor="year">
                         📅 Current Year
                       </label>
@@ -1882,14 +2566,20 @@ function App() {
                         value={formData.year}
                         onChange={handleInputChange}
                       />
+
                     </div>
+
                   </>
                 )}
+
+                {/* GRADUATE */}
 
                 {formData.educationLevel ===
                   "Graduate / Job Seeker" && (
                   <>
+
                     <div className="form-group">
+
                       <label htmlFor="highestQualification">
                         🎓 Highest Qualification
                       </label>
@@ -1902,9 +2592,11 @@ function App() {
                         value={formData.highestQualification}
                         onChange={handleInputChange}
                       />
+
                     </div>
 
                     <div className="form-group">
+
                       <label htmlFor="branch">
                         💻 Specialization / Branch
                       </label>
@@ -1917,14 +2609,20 @@ function App() {
                         value={formData.branch}
                         onChange={handleInputChange}
                       />
+
                     </div>
+
                   </>
                 )}
+
+                {/* WORKING PROFESSIONAL */}
 
                 {formData.educationLevel ===
                   "Working Professional" && (
                   <>
+
                     <div className="form-group">
+
                       <label htmlFor="currentRole">
                         💼 Current Role
                       </label>
@@ -1937,9 +2635,11 @@ function App() {
                         value={formData.currentRole}
                         onChange={handleInputChange}
                       />
+
                     </div>
 
                     <div className="form-group">
+
                       <label htmlFor="experience">
                         ⏳ Work Experience
                       </label>
@@ -1952,9 +2652,11 @@ function App() {
                         value={formData.experience}
                         onChange={handleInputChange}
                       />
+
                     </div>
 
                     <div className="form-group">
+
                       <label htmlFor="highestQualification">
                         🎓 Highest Qualification
                       </label>
@@ -1967,9 +2669,13 @@ function App() {
                         value={formData.highestQualification}
                         onChange={handleInputChange}
                       />
+
                     </div>
+
                   </>
                 )}
+
+                {/* OTHER */}
 
                 {formData.educationLevel === "Other" && (
                   <div className="form-group">
@@ -1990,6 +2696,8 @@ function App() {
                   </div>
                 )}
 
+                {/* SKILLS */}
+
                 <div className="form-group">
 
                   <label htmlFor="skills">
@@ -2006,6 +2714,8 @@ function App() {
                   />
 
                 </div>
+
+                {/* INTERESTS */}
 
                 <div className="form-group">
 
@@ -2024,6 +2734,8 @@ function App() {
 
                 </div>
 
+                {/* CAREER GOAL */}
+
                 <div className="form-group">
 
                   <label htmlFor="careerGoal">
@@ -2040,6 +2752,8 @@ function App() {
                   />
 
                 </div>
+
+                {/* ANALYZE */}
 
                 <button
                   type="submit"
@@ -2065,6 +2779,10 @@ function App() {
 
           </section>
         )}
+
+        {/* ======================================================
+            LOADING
+        ====================================================== */}
 
         {isAnalyzing && (
           <section className="analysis-result">
@@ -2101,6 +2819,10 @@ function App() {
 
           </section>
         )}
+
+        {/* ======================================================
+            ANALYSIS RESULT
+        ====================================================== */}
 
         {analysis && !isAnalyzing && (
           <section
